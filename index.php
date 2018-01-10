@@ -15,6 +15,35 @@
 
   }
 
+// POST送信されていたらつぶやきをINSERTで保存
+  // DBに接続
+  require('dbconnect.php');
+
+  // 会員ボタンが押されたとき
+    if (isset($_POST) && !empty($_POST)) {
+      // 変数に入力された値を代入して扱いやすいようにする
+      $tweet = $_POST['tweet'];
+      $member_id = $_SESSION['id'];
+      $reply_tweet_id = -1;
+
+      try {
+  // DBに会員情報を登録するSQL文を作成
+  // now() MYSQLが用意している関数。現在日時を取得できる
+        $sql = "INSERT INTO `tweets`(`tweet`, `member_id`, `reply_tweet_id`, `created`, `modified`) VALUES (?,?,?,now(),now()) ";
+
+  // SQL文実行
+        $data = array($tweet,$member_id,$reply_tweet_id);
+
+        $stmt = $dbh->prepare($sql);
+        $stmt->execute($data);
+
+      } catch (Exception $e) {
+
+
+      }
+
+    }
+
 
 // 表示用のデータ取得
   try {
@@ -88,6 +117,7 @@
             </div>
           <ul class="paging">
             <input type="submit" class="btn btn-info" value="つぶやく">
+
                 &nbsp;&nbsp;&nbsp;&nbsp;
                 <li><a href="index.html" class="btn btn-default">前</a></li>
                 &nbsp;&nbsp;|&nbsp;&nbsp;
