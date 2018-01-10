@@ -150,6 +150,7 @@
           <?php if ((isset($error["login"])) && ($error["login"]== 'failed')) { ?>
           <p class="error">* emailかパスワードが間違っています</p>
           <?php } ?>
+          
           <input type="submit" class="btn btn-default" value="ログイン">
         </form>
       </div>
