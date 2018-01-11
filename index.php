@@ -19,24 +19,34 @@
   // DBに接続
   require('dbconnect.php');
 
-  // 会員ボタンが押されたとき
-    if (isset($_POST) && !empty($_POST)) {
-      // 変数に入力された値を代入して扱いやすいようにする
+  // ボタンが押されたとき
+  //  $_POST["tweet"] => "" $_POSTが空だと思われない
+  //  $_POST["tweet"] => "" $_POST["tweet"]が空だと認識される
+
+    if (isset($_POST) && !empty($_POST["tweet"])) {
+
       $tweet = $_POST['tweet'];
       $member_id = $_SESSION['id'];
       $reply_tweet_id = -1;
 
       try {
-  // DBに会員情報を登録するSQL文を作成
-  // now() MYSQLが用意している関数。現在日時を取得できる
+  // SQL文作成
+  // つぶやきをtweetsテーブルにINSERTしましょう！
+  // tweet=つぶやいた内容
+  // member_id=ログインした人のid
+  // reply_tweet_id=-1
+  // created=現在日時（now()を使用）
+  // modified=現在日時（now()を使用）
+
         $sql = "INSERT INTO `tweets`(`tweet`, `member_id`, `reply_tweet_id`, `created`, `modified`) VALUES (?,?,?,now(),now()) ";
 
   // SQL文実行
-        $data = array($tweet,$member_id,$reply_tweet_id);
-
+        $data = array($_POST["tweet"],$_SESSION['id'],-1);
         $stmt = $dbh->prepare($sql);
         $stmt->execute($data);
 
+        // 自分の画面へ移動する（データの再送信防止）
+        header("Location: index.php");
       } catch (Exception $e) {
 
 
@@ -55,6 +65,34 @@
         $stmt->execute();
 
         $login_member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // 一覧用の情報を取得
+        // テーブル結合
+        // ORDER BY `tweets`.`modified` DESC"最新順に並べる
+        $sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` INNER JOIN `members` ON `tweets`.`member_id`=`members`.`member_id` ORDER BY `tweets`.`modified` DESC";
+
+        // sql分実行
+        $stmt = $dbh->prepare($sql);
+        $stmt->execute();
+
+        // 一覧表示用の配列を用意
+        $tweet_list = array();
+
+        // 複数行のデータを取得するためのループ
+        while (1) {
+          # code...
+        $one_tweet = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($one_tweet == false) {
+          break;
+          }else{
+            // データが取得出来ている
+            $tweet_list[] = $one_tweet;
+
+          }
+
+        }
+
   } catch (Exception $e) {
     
   }
@@ -127,63 +165,39 @@
       </div>
 
       <div class="col-md-8 content-margin-top">
+        <?php foreach ($tweet_list as $one_tweet) {
+        ?>
+        <!-- 繰り返すタグが書かれる場所 -->
         <div class="msg">
-          <img src="http://c85c7a.medialib.glogster.com/taniaarca/media/71/71c8671f98761a43f6f50a282e20f0b82bdb1f8c/blog-images-1349202732-fondo-steve-jobs-ipad.jpg" width="48" height="48">
+          <img src="picture_path/<?php echo $one_tweet["picture_path"]; ?>" width="48" height="48">
           <p>
-            つぶやき４<span class="name"> (Seed kun) </span>
+            <?php echo $one_tweet["tweet"]; ?>
+            <span class="name">  </span> (<?php echo $one_tweet["nick_name"]; ?>)
+
             [<a href="#">Re</a>]
           </p>
           <p class="day">
-            <a href="view.html">
-              2016-01-28 18:04
-            </a>
+            <a href="view.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>">
+            <?php
+            $modify_date = $one_tweet["modified"];
+            // strtotime 文字型のデータを日時型に変換できる
+
+            $modify_date = date("Y-m-d H:i",strtotime($modify_date));
+            echo $modify_date;
+            ?>
+
+              <? php echo $one_tweet["modified"]: ?>
+
             [<a href="#" style="color: #00994C;">編集</a>]
             [<a href="#" style="color: #F33;">削除</a>]
           </p>
         </div>
-        <div class="msg">
-          <img src="http://c85c7a.medialib.glogster.com/taniaarca/media/71/71c8671f98761a43f6f50a282e20f0b82bdb1f8c/blog-images-1349202732-fondo-steve-jobs-ipad.jpg" width="48" height="48">
-          <p>
-            つぶやき３<span class="name"> (Seed kun) </span>
-            [<a href="#">Re</a>]
-          </p>
-          <p class="day">
-            <a href="view.html">
-              2016-01-28 18:03
-            </a>
-            [<a href="#" style="color: #00994C;">編集</a>]
-            [<a href="#" style="color: #F33;">削除</a>]
-          </p>
-        </div>
-        <div class="msg">
-          <img src="http://c85c7a.medialib.glogster.com/taniaarca/media/71/71c8671f98761a43f6f50a282e20f0b82bdb1f8c/blog-images-1349202732-fondo-steve-jobs-ipad.jpg" width="48" height="48">
-          <p>
-            つぶやき２<span class="name"> (Seed kun) </span>
-            [<a href="#">Re</a>]
-          </p>
-          <p class="day">
-            <a href="view.html">
-              2016-01-28 18:02
-            </a>
-            [<a href="#" style="color: #00994C;">編集</a>]
-            [<a href="#" style="color: #F33;">削除</a>]
-          </p>
-        </div>
-        <div class="msg">
-          <img src="http://c85c7a.medialib.glogster.com/taniaarca/media/71/71c8671f98761a43f6f50a282e20f0b82bdb1f8c/blog-images-1349202732-fondo-steve-jobs-ipad.jpg" width="48" height="48">
-          <p>
-            つぶやき１<span class="name"> (Seed kun) </span>
-            [<a href="#">Re</a>]
-          </p>
-          <p class="day">
-            <a href="view.html">
-              2016-01-28 18:01
-            </a>
-            [<a href="#" style="color: #00994C;">編集</a>]
-            [<a href="#" style="color: #F33;">削除</a>]
-          </p>
-        </div>
-      </div>
+
+
+        
+          <?php  
+        }
+        ?>
 
     </div>
   </div>
