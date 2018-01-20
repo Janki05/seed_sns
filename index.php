@@ -1,19 +1,25 @@
 <?php
-  session_start();
+  // session_start();
+
+  require('function.php');
+
+  //ログインチェック 
+  login_check();
+
     // DBに接続
   require('dbconnect.php');
 
-  // ログインチェック
-  if (isset($_SESSION['id'])) {
-    // ログインしている状態
-    # code...
-  }else{
-    // ログインしていない
-    // ログイン画面に飛ばす
-    header("Location: login.php");
-    exit();
+  // // ログインチェック
+  // if (isset($_SESSION['id'])) {
+  //   // ログインしている状態
+  //   # code...
+  // }else{
+  //   // ログインしていない
+  //   // ログイン画面に飛ばす
+  //   header("Location: login.php");
+  //   exit();
 
-  }
+  // }
 
 // POST送信されていたらつぶやきをINSERTで保存
   // DBに接続
@@ -55,6 +61,48 @@
     }
 
 
+  // ------ページング処理-------------
+
+  $page = "";
+
+  // パラメータが存在していたらページ番号代入
+  if (isset($_GET["page"])){
+    $page = $_GET["page"];
+  }else{
+    // 存在しない場合はページ番号を1とする
+    $page = 1;
+
+  }
+
+  // 1以下のイレギュラーな数字が入って来た時、ページ番号を強制的に１とする
+  // max関数カンマ区切りで羅列された数字の中から最大の数字を取得
+  $page = max($page,1);
+
+
+
+// １ページ分の表示件数
+  $page_row = 5;
+
+  // データの件数から最大ページ数を計算する
+  $sql = "SELECT COUNT(*) AS `cnt` FROM `tweets` WHERE `delete_flag`=0";
+  $page_stmt = $dbh->prepare($sql);
+  $page_stmt->execute();
+
+  $record_count = $page_stmt->fetch(PDO::FETCH_ASSOC);
+
+  // 小数点の繰り上げ
+  $all_page_number = ceil($record_count['cnt'] / $page_row);
+
+  // パラメータのページ番号が最大ページを超えていれば、強制的に最後のページとする
+  // min カンマ区切りの数字の羅列の中から最小の数字を取得する
+  $page = min($page,$all_page_number);
+
+  // 表示するデータの取得開始場所
+  $start = ($page-1) * $page_row;
+
+
+  // -----------------------
+
 // 表示用のデータ取得
   try {
     // ログインしている人の情報を取得
@@ -69,7 +117,8 @@
         // 一覧用の情報を取得
         // テーブル結合
         // ORDER BY `tweets`.`modified` DESC"最新順に並べる
-        $sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` INNER JOIN `members` ON `tweets`.`member_id`=`members`.`member_id` ORDER BY `tweets`.`modified` DESC";
+        // 論理削除に対応 delete_flag = 0 のものだけ取得
+        $sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` INNER JOIN `members` ON `tweets`.`member_id`=`members`.`member_id` WHERE `delete_flag`=0 ORDER BY `tweets`.`modified` DESC LIMIT ".$start.",".$page_row;
 
         // sql分実行
         $stmt = $dbh->prepare($sql);
@@ -86,6 +135,35 @@
         if ($one_tweet == false) {
           break;
           }else{
+            // Like数を求めるSQL文
+            $like_sql = "SELECT COUNT(*) as `like_count` FROM `likes` WHERE `tweet_id`=".$one_tweet["tweet_id"];
+            //SQL文実行
+            $like_stmt = $dbh->prepare($like_sql);
+            $like_stmt->execute();
+
+            $like_number = $like_stmt->fetch(PDO::FETCH_ASSOC);
+
+            // $one_tweetの中身
+            // $one_tweet["tweet"]つぶやき
+            // $one_tweet["member_id"]つぶやいた人のID
+            // $one_tweet["nick_name"]つぶやいた人のnickname
+            // $one_tweet["picture_path"] つぶやいた人のプロフィール画像
+            // $one_tweet["modified"]つぶやいた日時
+
+            // 一行分のデータに新しいキーを用意して、like数を代入
+            $one_tweet["like_count"] = $like_number["like_count"];
+
+            // ログインしている人がLikeしているかどうかの情報を取得
+            $login_like_sql = "SELECT COUNT(*) as `like_count` FROM `likes` WHERE `tweet_id`=".$one_tweet["tweet_id"]." AND `member_id`=".$_SESSION["id"];
+
+            // SQL文実行
+            $login_like_stmt = $dbh->prepare($like_sql);
+            $login_like_stmt->execute();
+            // fetchして取得
+            $login_like_number = $login_like_stmt->fetch(PDO::FETCH_ASSOC);
+
+            $one_tweet["login_like_flag"] = $login_like_number["like_count"];
+
             // データが取得出来ている
             $tweet_list[] = $one_tweet;
 
@@ -155,11 +233,22 @@
             </div>
           <ul class="paging">
             <input type="submit" class="btn btn-info" value="つぶやく">
-
                 &nbsp;&nbsp;&nbsp;&nbsp;
-                <li><a href="index.html" class="btn btn-default">前</a></li>
+                <?php if ($page == 1) { ?>
+                <li>前</li>
+                <?php }else{ ?>
+
+                <li><a href="index.php?page=<?php echo $page - 1; ?>" class="btn btn-default">前</a></li>
+                <?php } ?>
                 &nbsp;&nbsp;|&nbsp;&nbsp;
-                <li><a href="index.html" class="btn btn-default">次</a></li>
+
+                <?php if ($all_page_number == $page ) { ?>
+                <li>次</li>
+                <?php }else{ ?>
+                <li><a href="index.php?page=<?php echo $page + 1; ?>" class="btn btn-default">次</a></li>
+                <?php } ?>
+                
+                <li><?php echo $page; ?> / <?php echo $all_page_number; ?> Page</li>
           </ul>
         </form>
       </div>
@@ -174,25 +263,31 @@
             <?php echo $one_tweet["tweet"]; ?>
             <span class="name">  </span> (<?php echo $one_tweet["nick_name"]; ?>)
 
-            [<a href="#">Re</a>]
+            [<a href="reply.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>">Re</a>]
+            
+
+            <?php if($one_tweet["login_like_flag"] == 0){ ?>
+             <a href="like.php?like_tweet_id=<?php echo $one_tweet["tweet_id"]; ?>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i>Like </a> 
+             <?php }else{ ?>
+             <a href="like.php?unlike_tweet_id=<?php echo $one_tweet["tweet_id"]; ?>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i>Unlike </a>
+            <?php } ?>
+
+            <?php if($one_tweet["like_count"] > 0)echo $one_tweet["like_count"]; ?>
           </p>
           <p class="day">
             <a href="view.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>">
-            <?php
-            $modify_date = $one_tweet["modified"];
-            // strtotime 文字型のデータを日時型に変換できる
 
-            $modify_date = date("Y-m-d H:i",strtotime($modify_date));
-            echo $modify_date;
-            ?>
 
-              <? php echo $one_tweet["modified"]: ?>
-
+              <?php echo $one_tweet["modified"]; ?>
+            <?php if ($_SESSION["id"] == $one_tweet["member_id"]){ ?>
             [<a href="#" style="color: #00994C;">編集</a>]
-            [<a href="#" style="color: #F33;">削除</a>]
+            [<a onclick ="return confirm('削除します、よろしいでしょうか？')" href="delete.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>" style="color: #F33;">削除</a>]
+            <?php } ?>
+            <?php if ($one_tweet["reply_tweet_id"] > 0) { ?>
+            [[<a href="view.php?tweet_id=<?php echo $one_tweet["reply_tweet_id"]; ?>" style="color: #a9a9a9;">返信元のメッセージを表示</a>]]
+            <?php } ?>
           </p>
         </div>
-
 
         
           <?php  
@@ -203,8 +298,8 @@
   </div>
 
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="../assets/js/jquery-3.1.1.js"></script>
-    <script src="../assets/js/jquery-migrate-1.4.1.js"></script>
-    <script src="../assets/js/bootstrap.js"></script>
+    <script src="assets/js/jquery-3.1.1.js"></script>
+    <script src="assets/js/jquery-migrate-1.4.1.js"></script>
+    <script src="assets/js/bootstrap.js"></script>
   </body>
 </html>

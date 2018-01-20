@@ -90,7 +90,7 @@
       // 例) 1.pngがファイル名の場合、$extにはpngが代入される
       $ext = substr($_FILES['picture_path']['name'],-3);
 
-      if (($ext == 'png') || ($ext == 'jpg') || ($ext == 'gif')){
+      if (($ext == 'png') || ($ext == 'jpg') || ($ext == 'gif') || ($ext == 'JPG')){
       // 画像のアップロード処理
       // 例）eriko1.pngをユーザが指定したとき、$picture_nameの中身は20171222142530eriko1.pngという文字列が代入されます
       // ファイル名の決定

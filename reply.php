@@ -11,6 +11,33 @@
   // DBに接続
   require('dbconnect.php');
 
+      if (isset($_POST) && !empty($_POST["tweet"])) {
+
+      try {
+  // SQL文作成
+  // つぶやきをtweetsテーブルにINSERTしましょう！
+  // tweet=つぶやいた内容
+  // member_id=ログインした人のid
+  // reply_tweet_id=返信元のTweet_id
+  // created=現在日時（now()を使用）
+  // modified=現在日時（now()を使用）
+
+        $sql = "INSERT INTO `tweets`(`tweet`, `member_id`, `reply_tweet_id`, `created`, `modified`) VALUES (?,?,?,now(),now()) ";
+
+  // SQL文実行
+        $data = array($_POST["tweet"],$_SESSION['id'],$_GET["tweet_id"]);
+        $stmt = $dbh->prepare($sql);
+        $stmt->execute($data);
+
+        // 一覧へ移動する
+        header("Location: index.php");
+      } catch (Exception $e) {
+
+
+      }
+
+    }
+
   // ヒント：$_GET["tweet_id"] の中に表示したいつぶやきのtweet_idが格納されている
   // ヒント2:送信されているtweet_idを使用してSQL文でDBからデータを1件取得
   // ヒント3:取得できたデータを一覧の一行分の表示を参考に表示してみる
@@ -20,11 +47,14 @@
           $sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` INNER JOIN `members` ON `tweets`.`member_id`=`members`.`member_id` WHERE `tweets`.`tweet_id`=".$_GET["tweet_id"];
 
 
-        // sql実行
+        // sql分実行
         $stmt = $dbh->prepare($sql);
         $stmt->execute();
 
-        $tweet = $stmt->fetch(PDO::FETCH_ASSOC);
+        $one_tweet = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $reply_msg = "@".$one_tweet["tweet"]."(".$one_tweet["nick_name"].")";
+
 
 ?>
 
@@ -71,27 +101,25 @@
 
   <div class="container">
     <div class="row">
-      <div class="col-md-4 col-md-offset-4 content-margin-top">
+      <div class="col-md-6 col-md-offset-3 content-margin-top">
+        <h4>つぶやきに返信しましょう</h4>
         <div class="msg">
-          <img src="picture_path/<?php echo $tweet["picture_path"]; ?>" width="100" height="100">
-          <p>投稿者 : <span class="name"> <?php echo $tweet["nick_name"]; ?></span></p>
-          <p>
-            つぶやき : <br>
-            <?php echo $tweet["tweet"]; ?>
-          </p>
-          <p class="day">
+               <form method="post" action="" class="form-horizontal" role="form">
+            <!-- つぶやき -->
+            <div class="form-group">
+              <label class="col-sm-4 control-label">つぶやきに返信</label>
+              <div class="col-sm-8">
+                <textarea name="tweet" cols="50" rows="5" class="form-control" placeholder="例：Hello World!"><?php echo $reply_msg; ?></textarea>
+              </div>
+            </div>
+          <ul class="paging">
+            <input type="submit" class="btn btn-info" value="返信としてつぶやく">
 
-            <?php
-            $modify_date = $tweet["modified"];
-            // strtotime 文字型のデータを日時型に変換できる
-            $modify_date = date("Y-m-d H:i",strtotime($modify_date));
 
-            echo $modify_date;
-            ?>
-
-            [<a href="#" style="color: #F33;">削除</a>]
-          </p>
+          </ul>
+        </form>
         </div>
+
         <a href="index.php">&laquo;&nbsp;一覧へ戻る</a>
       </div>
     </div>
