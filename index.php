@@ -29,11 +29,20 @@
   //  $_POST["tweet"] => "" $_POSTが空だと思われない
   //  $_POST["tweet"] => "" $_POST["tweet"]が空だと認識される
 
-    if (isset($_POST) && !empty($_POST["tweet"])) {
+    if (isset($_POST) && !empty($_POST)) {
+
+    //入力チェック
+    if ($_POST["tweet"] == ""){
+      $error["tweet"] = "blank";
+    }
+
 
       $tweet = $_POST['tweet'];
       $member_id = $_SESSION['id'];
       $reply_tweet_id = -1;
+
+
+    if (!isset($error)){
 
       try {
   // SQL文作成
@@ -57,6 +66,7 @@
 
 
       }
+    }
 
     }
 
@@ -171,6 +181,21 @@
 
         }
 
+        // Followingの数
+        $following_sql = "SELECT count(*) as `cnt` FROM `follows` WHERE `member_id`=".$_SESSION["id"];
+        $following_stmt = $dbh->prepare($following_sql);
+        $following_stmt->execute();
+         // fetchして取得
+        $following = $following_stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Followerの数
+        $follower_sql = "SELECT count(*) as `cnt` FROM `follows` WHERE `follower_id`=".$_SESSION["id"];
+        $follower_stmt = $dbh->prepare($follower_sql);
+        $follower_stmt->execute();
+         // fetchして取得
+        $follower = $follower_stmt->fetch(PDO::FETCH_ASSOC);
+
+
   } catch (Exception $e) {
     
   }
@@ -229,6 +254,9 @@
               <label class="col-sm-4 control-label">つぶやき</label>
               <div class="col-sm-8">
                 <textarea name="tweet" cols="50" rows="5" class="form-control" placeholder="例：Hello World!"></textarea>
+                <?php if (isset($error) && ($error["tweet"] == "blank")){ ?>
+                  <p class="error">なにかつぶやいてください。</p>
+                <?php  } ?>
               </div>
             </div>
           <ul class="paging">
@@ -254,11 +282,17 @@
       </div>
 
       <div class="col-md-8 content-margin-top">
+        <div class="msg_header">
+          <a href="#">Followers<span class="badge badge-pill badge-default"><?php echo $follower["cnt"]; ?></span></a> <a href="#">Following<span class="badge badge-pill badge-default"><?php echo $following["cnt"]; ?></span></a>
+
+        </div>
         <?php foreach ($tweet_list as $one_tweet) {
         ?>
         <!-- 繰り返すタグが書かれる場所 -->
         <div class="msg">
-          <img src="picture_path/<?php echo $one_tweet["picture_path"]; ?>" width="48" height="48">
+           <a href="profile.php?member_id=<?php echo $one_tweet["member_id"]; ?>">
+          <img src="picture_path/<?php echo $one_tweet["picture_path"]; ?>" width="48" height="48"></a>
+
           <p>
             <?php echo $one_tweet["tweet"]; ?>
             <span class="name">  </span> (<?php echo $one_tweet["nick_name"]; ?>)
@@ -267,9 +301,9 @@
             
 
             <?php if($one_tweet["login_like_flag"] == 0){ ?>
-             <a href="like.php?like_tweet_id=<?php echo $one_tweet["tweet_id"]; ?>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i>Like </a> 
+             <a href="like.php?like_tweet_id=<?php echo $one_tweet["tweet_id"]; ?>&page=<?php echo $page; ?>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i>Like </a> 
              <?php }else{ ?>
-             <a href="like.php?unlike_tweet_id=<?php echo $one_tweet["tweet_id"]; ?>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i>Unlike </a>
+             <a href="like.php?unlike_tweet_id=<?php echo $one_tweet["tweet_id"]; ?>&page=<?php echo $page; ?>"><i class="fa fa-thumbs-o-up" aria-hidden="true"></i>Unlike </a>
             <?php } ?>
 
             <?php if($one_tweet["like_count"] > 0)echo $one_tweet["like_count"]; ?>
@@ -280,7 +314,7 @@
 
               <?php echo $one_tweet["modified"]; ?>
             <?php if ($_SESSION["id"] == $one_tweet["member_id"]){ ?>
-            [<a href="#" style="color: #00994C;">編集</a>]
+            [<a href="edit.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>" style="color: #00994C;">編集</a>]
             [<a onclick ="return confirm('削除します、よろしいでしょうか？')" href="delete.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>" style="color: #F33;">削除</a>]
             <?php } ?>
             <?php if ($one_tweet["reply_tweet_id"] > 0) { ?>
