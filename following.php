@@ -4,8 +4,8 @@
   // DBの接続
   require('dbconnect.php');
 
-  // GET送信された、member_idをつかって、プロフィール情報をmembersテーブルから取得
-  $sql = "SELECT * FROM `members` WHERE `member_id`=".$_GET["member_id"];
+  // ログインしている人のプロフィール情報をmembersテーブルから取得
+  $sql = "SELECT * FROM `members` WHERE `member_id`=".$_SESSION["id"];
 
   $stmt = $dbh->prepare($sql);
   $stmt->execute();
@@ -13,7 +13,7 @@
   $profile_member = $stmt->fetch(PDO::FETCH_ASSOC);
 
   //一覧データを取得
-  $sql = "SELECT `tweets`.*,`members`.`nick_name`,`members`.`picture_path` FROM `tweets` INNER JOIN `members` ON `tweets`.`member_id`=`members`.`member_id` WHERE `delete_flag`=0 AND `tweets`.`member_id`=".$_GET["member_id"]." ORDER BY `tweets`.`modified` DESC ";
+  $sql = "SELECT * FROM `members` INNER JOIN `follows` ON `members`.`member_id` = `follows`.`follower_id` WHERE `follows`.`member_id` = ".$_SESSION["id"]." ORDER BY `follows`.`created` DESC";
 
   $stmt = $dbh->prepare($sql);
   $stmt->execute();
@@ -27,21 +27,12 @@
     if ($one_tweet == false){
       break;
     }else{
+
+
       //データが取得できている
       $tweet_list[] = $one_tweet;
     }
   }
-
-
-
-      // 自分もフォローしていたら１フォローしていなかったら0を取得
-      $fl_flag_sql = "SELECT COUNT(*) as `cnt` FROM `follows` WHERE `member_id`=".$_SESSION["id"]." AND `follower_id`=".$_GET["member_id"];
-      $fl_stmt = $dbh->prepare($fl_flag_sql);
-      $fl_stmt->execute();
-      $fl_flag = $fl_stmt->fetch(PDO::FETCH_ASSOC);
-
-
-
 //フォロー処理
 // profile.php?follow_id=7 というリンクが推された＝フォローボタンが押された
   if (isset($_GET["follow_id"])){
@@ -51,11 +42,9 @@
     $fl_stmt = $dbh->prepare($sql);
     $fl_stmt->execute($data);
 
-// フォローを押す前の状態に戻す
-      header("Location: profile.php?member_id=".$_GET["member_id"]);
-
+    // フォローボタンを押す前の状態に戻す(再読み込みで再度フォロー処理が動くのを防ぐ)
+    header("location: follow.php");
   }
-
 
 // フォロー解除処理
   if (isset($_GET["unfollow_id"])){
@@ -66,9 +55,8 @@
       $unfl_stmt->execute($data);
 
 // フォロー解除を押す前の状態に戻す
-      header("Location: profile.php?member_id=".$_GET["member_id"]);
+      header("Location: following.php");
   }
-
 
 ?>
 <!DOCTYPE html>
@@ -118,44 +106,25 @@
         <img src="picture_path/<?php echo $profile_member["picture_path"]; ?>" width="250" height="250">
         <h3><?php echo $profile_member["nick_name"]; ?></h3>
         <?php if($_SESSION["id"] != $profile_member["member_id"]){ ?>
-
-        <? if ($fl_flag["cnt" == 0]) { ?>
-
-        <a href="profile.php?member_id=<?php echo $_SESSION["id"]; ?>&follow_id=<?php echo $_GET["member_id"]; ?>">
+        <a href="profile.php?member_id=<?php echo $profile_member["member_id"]; ?>&follow_id=<?php echo $profile_member["member_id"]; ?>">
         <button class="btn btn-block btn-default">フォロー</button></a>
-
-        <?php }else{ ?>
-
-
-       <a href="profile.php?member_id=<?php echo $_SESSION["id"]; ?>&unfollow_id=<?php echo $_GET["member_id"]; ?>">
-        <button class="btn btn-block btn-default">フォロー解除</button></a>
-        
         <?php } ?>
         <br>
         <a href="index.php">&laquo;&nbsp;一覧へ戻る</a>
       </div>
       <div class="col-md-9 content-margin-top">
+        <div class="msg_header">
+        <a href="#">Following<span class="badge badge-pill badge-default"><?php
+        // 配列にいくつデータが存在しているか数えてくれる関数
+        echo count($tweet_list); ?></span></a>
+        </div>
         <?php foreach ($tweet_list as $one_tweet) { ?>  
         <div class="msg">
-          <img src="picture_path/<?php echo $one_tweet["picture_path"]; ?>" width="100" height="100">
-          <p>投稿者 : <span class="name"> <?php echo $one_tweet["nick_name"]; ?> </span></p>
-          <p>
-            つぶやき : <br>
-            <?php echo $one_tweet["tweet"]; ?>
-          </p>
-          <p class="day">
-            <?php 
-              $modify_date = $one_tweet["modified"];
-              // strtotime 文字型のデータを日時型に変換できる
-              $modify_date = date("Y-m-d H:i",strtotime($modify_date));
-
-              echo $modify_date; 
-
-              ?>
-            <?php if ($_SESSION["id"] == $one_tweet["member_id"]){ ?>
-            [<a onclick="return confirm('削除します、よろしいですか？');" href="delete.php?tweet_id=<?php echo $one_tweet["tweet_id"]; ?>" style="color: #F33;">削除</a>]
-            <?php } ?>
-          </p>
+          <img src="picture_path/<?php echo $one_tweet["picture_path"]; ?>" width="48" height="48">
+          <p> <span class="name"> <?php echo $one_tweet["nick_name"]; ?> </span></p>
+        <a href = "following.php?unfollow_id=<?php echo $one_tweet["follower_id"]; ?>";
+        <button class="btn btn-default">フォロー解除</button></a>
+        </a>
         </div>
         <?php } ?>
       </div>
