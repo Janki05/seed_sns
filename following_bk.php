@@ -27,6 +27,8 @@
     if ($one_tweet == false){
       break;
     }else{
+
+
       //データが取得できている
       $tweet_list[] = $one_tweet;
     }
@@ -40,21 +42,20 @@
     $fl_stmt = $dbh->prepare($sql);
     $fl_stmt->execute($data);
 
-    //フォロー押す前の状態に戻す（再読込で、再度フォロー処理が動くのを防ぐ）
-    header("Location: follow.php");
+    // フォローボタンを押す前の状態に戻す(再読み込みで再度フォロー処理が動くのを防ぐ)
+    header("location: follow.php");
   }
 
-//フォロー解除処理
+// フォロー解除処理
   if (isset($_GET["unfollow_id"])){
-    //フォロー情報を削除するSQLを作成
-    $sql = "DELETE FROM `follows` WHERE `member_id`=? AND `follower_id`=?";
-    $data = array($_SESSION["id"],$_GET["unfollow_id"]);
-    $unfl_stmt = $dbh->prepare($sql);
-    $unfl_stmt->execute($data);
+    // フォロー情報を削除するSQLを作成
+      $sql = "DELETE FROM `follows` WHERE `member_id`=? AND `follower_id`=?";
+      $data = array($_SESSION["id"],$_GET["unfollow_id"]);
+      $unfl_stmt = $dbh->prepare($sql);
+      $unfl_stmt->execute($data);
 
-    //フォロー解除を押す前の状態に戻す
-    header("Location: following.php");
-
+// フォロー解除を押す前の状態に戻す
+      header("Location: following.php");
   }
 
 ?>
@@ -113,17 +114,17 @@
       </div>
       <div class="col-md-9 content-margin-top">
         <div class="msg_header">
-        <a href="#">Following<span class="badge badge-pill badge-default"><?php 
-        //count関数：配列にいくつデータた存在しているか数えてくれる関数
+        <a href="#">Following<span class="badge badge-pill badge-default"><?php
+        // 配列にいくつデータが存在しているか数えてくれる関数
         echo count($tweet_list); ?></span></a>
         </div>
         <?php foreach ($tweet_list as $one_tweet) { ?>  
         <div class="msg">
           <img src="picture_path/<?php echo $one_tweet["picture_path"]; ?>" width="48" height="48">
-          <p> <span class="name"> <?php echo $one_tweet["nick_name"]; ?> </span></p>          
-          <a href="following.php?unfollow_id=<?php echo $one_tweet["follower_id"]; ?>">
-          <button class="btn btn-default">フォロー解除</button>
-          </a>
+          <p> <span class="name"> <?php echo $one_tweet["nick_name"]; ?> </span></p>
+        <a href = "following.php?unfollow_id=<?php echo $one_tweet["follower_id"]; ?>";
+        <button class="btn btn-default">フォロー解除</button></a>
+        </a>
         </div>
         <?php } ?>
       </div>
